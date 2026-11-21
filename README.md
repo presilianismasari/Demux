@@ -24,17 +24,16 @@ into `barcodeNN.fastq.gz` (same-named folders from several run ids are merged), 
 chmod +x bin/*.sh   # once; Nextflow needs bin/ scripts to be executable
 
 # --input: fastq/fastq.gz glob or a directory (searched recursively)
-# -profile: docker or singularity; omit to use tools from PATH
 nextflow run main.nf \
   --input 'fastq_pass/*.fastq.gz' \
   --metadata metadata.tsv \
-  --outdir results \
-  -profile docker
+  --outdir results
 ```
 
-Without a profile, `dorado`, `NanoPlot` and `quarto` (with R, tidyverse and knitr) must be on `PATH`.
-Container images are set in `nextflow.config` (`params.dorado_container`, `params.nanoplot_container`,
-`params.report_container`); pin them to versions you have validated.
+Tools are not containerised: `dorado` is run from `params.dorado_bin_dir` (prepended to `PATH`), and
+`NanoPlot` / `quarto` (with R, tidyverse and knitr) from the conda envs `params.nanoplot_env` /
+`params.quarto_env` (env paths). Override any of them on the command line, e.g.
+`--dorado_bin_dir /path/to/dorado/bin --quarto_env /path/to/env`. `conda` must be on `PATH`.
 Useful options: `--save_intermediate` (publish every stage's flattened output), `--dorado_args '...'`, `-resume`.
 
 ### Metadata
