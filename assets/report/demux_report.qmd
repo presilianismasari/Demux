@@ -1,0 +1,151 @@
+---
+title: "PacBio 16S custom demultiplexing report"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: cosmo
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+
+fmt <- function(x) format(x, big.mark = ",", scientific = FALSE, trim = TRUE)
+stage_levels <- c("FWD_DEMUX", "RC_REV_DEMUX", "REV_DEMUX", "RC_FWD_DEMUX")
+
+run_info     <- read_tsv("run_info.tsv", col_types = "cc")
+stage_counts <- read_tsv("stage_counts.tsv", col_types = "cccdd")
+sample_stats <- read_tsv("sample_stats.tsv", col_types = "ccdddddd")
+samples      <- read_tsv("samples_metadata.tsv", col_types = cols(.default = "c"))
+```
+
+## Run
+
+```{r run-info}
+kable(run_info)
+```
+
+## Stages
+
+Each stage is one dorado demux run (stages 2 and 4 run once per parent barcode).
+
+```{r stage-summary}
+stage_summary <- stage_counts |>
+  mutate(status = if_else(barcode == "unclassified", "unclassified", "classified")) |>
+  group_by(stage, status) |>
+  summarise(reads = sum(reads), .groups = "drop") |>
+  complete(stage, status, fill = list(reads = 0)) |>
+  pivot_wider(names_from = status, values_from = reads) |>
+  mutate(
+    total = classified + unclassified,
+    pct_classified = round(100 * classified / total, 1)
+  ) |>
+  arrange(match(stage, stage_levels))
+
+kable(
+  stage_summary |> mutate(across(c(classified, unclassified, total), fmt)),
+  col.names = c("Stage", "Classified reads", "Unclassified reads", "Total reads", "% classified")
+)
+```
+
+### Stage 1: forward primer, front barcode
+
+```{r stage1}
+stage_counts |>
+  filter(stage == "FWD_DEMUX") |>
+  ggplot(aes(barcode, reads)) +
+  geom_col(fill = "steelblue") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = NULL, y = "reads") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Stage 2 and 4: rear barcode per front barcode
+
+Rows are the parent (front) barcode, columns the rear barcode found in it.
+
+```{r rc-heatmap}
+rc_heatmap <- function(st, title) {
+  d <- stage_counts |> filter(stage == st)
+  if (nrow(d) == 0) {
+    return(invisible(NULL))
+  }
+  ggplot(d, aes(barcode, parent, fill = reads)) +
+    geom_tile(colour = "white") +
+    geom_text(aes(label = fmt(reads)), size = 3) +
+    scale_fill_gradient(low = "white", high = "steelblue", labels = scales::comma) +
+    labs(title = title, x = "rear barcode", y = "front barcode (parent)") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+rc_heatmap("RC_REV_DEMUX", "Forward reads: RC_REV_DEMUX")
+rc_heatmap("RC_FWD_DEMUX", "Reverse reads: RC_FWD_DEMUX")
+```
+
+## Samples
+
+```{r samples}
+sample_report <- samples |>
+  left_join(sample_stats, by = c("customer", "sample")) |>
+  mutate(
+    across(c(fwd_reads, fwd_bases, rev_reads, rev_bases, total_reads, total_bases), ~ coalesce(.x, 0)),
+    mean_length = if_else(total_reads > 0, round(total_bases / total_reads), NA_real_),
+    status = if_else(total_reads > 0, "ok", "NO READS")
+  )
+
+input_reads <- stage_summary |> filter(stage == "FWD_DEMUX") |> pull(total) |> sum()
+in_samples  <- sum(sample_report$total_reads)
+candidates  <- stage_summary |> filter(stage %in% c("RC_REV_DEMUX", "RC_FWD_DEMUX")) |> pull(classified) |> sum()
+
+overview <- tibble(
+  metric = c(
+    "Input reads",
+    "Reads assigned to a sample in the metadata",
+    "% of input reads in samples",
+    "Reads fully demultiplexed but not in the metadata"
+  ),
+  value = c(
+    fmt(input_reads),
+    fmt(in_samples),
+    if (input_reads > 0) as.character(round(100 * in_samples / input_reads, 1)) else NA_character_,
+    fmt(max(candidates - in_samples, 0))
+  )
+)
+kable(overview, col.names = c("", ""))
+```
+
+```{r sample-table}
+sample_report |>
+  select(customer, sample, status, fwd_reads, rev_reads, total_reads, mean_length) |>
+  mutate(across(c(fwd_reads, rev_reads, total_reads), fmt)) |>
+  kable(col.names = c("Customer", "Sample", "Status", "Forward reads", "Reverse reads", "Total reads", "Mean length (bp)"))
+```
+
+```{r sample-plot, fig.height = 5}
+sample_report |>
+  select(customer, sample, forward = fwd_reads, reverse = rev_reads) |>
+  pivot_longer(c(forward, reverse), names_to = "orientation", values_to = "reads") |>
+  ggplot(aes(sample, reads, fill = orientation)) +
+  geom_col() +
+  facet_wrap(~customer, scales = "free_x") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = NULL, y = "reads") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+```
+
+```{r no-reads}
+missing <- sample_report |> filter(total_reads == 0)
+if (nrow(missing) > 0) {
+  cat("**Samples without reads:**", paste(paste(missing$customer, missing$sample, sep = "/"), collapse = ", "))
+}
+```

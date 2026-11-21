@@ -1,0 +1,24 @@
+[arrangement]
+name = "PacBio_16S_reverse"
+kit  = "PB16S"
+
+# Reverse primer: 5'-GCATC-[BC2 16nt]-RGYTACCTTGTTACGACTT-3'
+mask1_front = "GCATC"
+mask1_rear  = "RGYTACCTTGTTACGACTT"
+
+# Barcode sequences
+barcode1_pattern = "REV%02i"
+first_index = 1
+last_index  = 8
+
+[scoring]
+max_barcode_penalty = 11
+min_barcode_penalty_dist = 3
+min_separation_only_dist = 6
+barcode_end_proximity = 75
+#recomendations from ont docs, in the range of 5-10 bases is typically good
+flank_left_pad = 5
+flank_right_pad = 10
+front_barcode_window = 175
+rear_barcode_window = 175
+midstrand_flank_score = 0.95

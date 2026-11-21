@@ -1,0 +1,5 @@
+Nama Customer	Sample	Forward-front	Forward-rear	Reverse-front	Reverse-rear
+Cust_01	A-1	barcode01-rcREV	barcode01	barcode01-rcFWD	barcode01
+Cust_01	A-2	barcode01-rcREV	barcode02	barcode02-rcFWD	barcode01
+Cust_02	B-2	barcode02-rcREV	barcode02	barcode02-rcFWD	barcode02
+Cust_03	B-1	barcode02-rcREV	barcode01	barcode01-rcFWD	barcode02

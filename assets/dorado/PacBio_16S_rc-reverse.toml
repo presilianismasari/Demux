@@ -1,0 +1,26 @@
+[arrangement]
+name = "PacBio_16S_rc-reverse"
+kit  = "PB16S"
+
+# ---------------- Reverse-complement orientation ----------------
+# Reverse primer RC: 5'-AAGTCGTAACAAGGTARCY-[RC(BC2) 16nt]-GATGC-3'
+mask1_front = "AAGTCGTAACAAGGTARCY"   # revcomp(mask2_rear)
+mask1_rear  = "GATGC"                  # revcomp(mask2_front)
+
+# Barcode sequences
+barcode1_pattern = "rcREV%02i"
+rear_only_barcodes = true
+first_index = 1
+last_index  = 8
+
+[scoring]
+max_barcode_penalty = 11
+min_barcode_penalty_dist = 3
+min_separation_only_dist = 6
+barcode_end_proximity = 75
+#recomendations from ont docs, in the range of 5-10 bases is typically good
+flank_left_pad = 5
+flank_right_pad = 10
+front_barcode_window = 175
+rear_barcode_window = 175
+midstrand_flank_score = 0.95

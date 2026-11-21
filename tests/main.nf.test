@@ -1,0 +1,58 @@
+nextflow_pipeline {
+
+    name "PacBio16S demux (stubbed dorado/NanoPlot/quarto)"
+    script "main.nf"
+
+    test("publishes one fastq.gz per sample under customer folders") {
+        options "-stub-run"
+
+        when {
+            params {
+                input    = "$projectDir/tests/data/reads/*.fastq"
+                metadata = "$projectDir/tests/data/metadata.tsv"
+                outdir   = "$outputDir"
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert file("$outputDir/demux/Cust_01/A-1/A-1.fastq.gz").exists()
+            assert file("$outputDir/demux/Cust_01/A-2/A-2.fastq.gz").exists()
+            assert file("$outputDir/demux/Cust_02/B-2/B-2.fastq.gz").exists()
+            assert file("$outputDir/demux/Cust_03/B-1/B-1.fastq.gz").exists()
+            assert file("$outputDir/NanoPlot/Cust_01/A-1").isDirectory()
+            assert file("$outputDir/report/demux.html").exists()
+        }
+    }
+
+    test("fails on a duplicated customer/sample") {
+        options "-stub-run"
+
+        when {
+            params {
+                input    = "$projectDir/tests/data/reads/*.fastq"
+                metadata = "$projectDir/tests/data/metadata_duplicate_sample.tsv"
+                outdir   = "$outputDir"
+            }
+        }
+
+        then {
+            assert workflow.failed
+        }
+    }
+
+    test("fails without --metadata") {
+        options "-stub-run"
+
+        when {
+            params {
+                input  = "$projectDir/tests/data/reads/*.fastq"
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assert workflow.failed
+        }
+    }
+}
