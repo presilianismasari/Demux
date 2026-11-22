@@ -2,10 +2,10 @@
  * STAGE 6: NanoPlot QC per sample -> NanoPlot/<customer>/<sample>/
  */
 process NANOPLOT {
-    tag "${meta.customer}/${meta.sample}"
+    tag { "${meta.customer}/${meta.sample}" }
     label 'nanoplot'
 
-    publishDir "${params.outdir}/NanoPlot/${meta.customer}", mode: params.publish_dir_mode
+    publishDir path: { "${params.outdir}/NanoPlot/${meta.customer}" }, mode: params.publish_dir_mode
 
     input:
     tuple val(meta), path(reads)

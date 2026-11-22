@@ -13,6 +13,25 @@ def perBarcode(files) {
     return [files].flatten().collect { f -> [normBarcode(f.name.replaceFirst(/\.fastq(\.gz)?$/, '')), f] }
 }
 
+def simplify(String h) {
+    return h.toLowerCase().replaceAll(/[^a-z0-9]/, '')
+}
+
+def clean(String s) {
+    return s.trim().replaceAll(/[^A-Za-z0-9._-]+/, '_')
+}
+
+def barcode(String value, String col, int lineNo) {
+    if (!(value =~ /(?i)barcode\d+/)) {
+        throw new IllegalArgumentException("Metadata line ${lineNo}: '${value}' in ${col} is not a barcodeNN value")
+    }
+    return normBarcode(value.trim())
+}
+
+def dupes(List rows, Closure key) {
+    return rows.groupBy(key).findAll { k, v -> v.size() > 1 }.keySet()
+}
+
 /*
  * Parse the tab-separated sample sheet. Header names are matched case/punctuation-insensitively:
  *   customer   : Nama Customer | Customer | Cust name
@@ -32,9 +51,6 @@ def parseMetadata(metadata) {
         rev_front: ['reversefront'],
         rev_rear : ['reverserear'],
     ]
-    def simplify = { String h -> h.toLowerCase().replaceAll(/[^a-z0-9]/, '') }
-    def clean    = { String s -> s.trim().replaceAll(/[^A-Za-z0-9._-]+/, '_') }
-
     def lines = metadata.readLines()
         .collect { it.replace('\r', '').replace('\uFEFF', '') }
         .findAll { it.trim() && !it.trim().startsWith('#') }
@@ -45,18 +61,11 @@ def parseMetadata(metadata) {
     def header = lines[0].split('\t', -1).collect { it.trim() }
     def idx = [:]
     aliases.each { key, names ->
-        def i = header.findIndexOf { simplify(it) in names }
+        def i = header.findIndexOf { h -> simplify(h) in names }
         if (i < 0) {
             throw new IllegalArgumentException("Metadata is missing a '${key}' column (accepted: ${names.join(', ')}). Header: ${header}")
         }
         idx[key] = i
-    }
-
-    def barcode = { String value, String col, int lineNo ->
-        if (!(value =~ /(?i)barcode\d+/)) {
-            throw new IllegalArgumentException("Metadata line ${lineNo}: '${value}' in ${col} is not a barcodeNN value")
-        }
-        return normBarcode(value.trim())
     }
 
     def rows = []
@@ -80,18 +89,15 @@ def parseMetadata(metadata) {
         rows << row
     }
 
-    def dupes = { Closure key ->
-        rows.groupBy(key).findAll { k, v -> v.size() > 1 }.keySet()
-    }
-    def dupSamples = dupes { "${it.customer}/${it.sample}" }
+    def dupSamples = dupes(rows) { r -> "${r.customer}/${r.sample}" }
     if (dupSamples) {
         throw new IllegalArgumentException("Duplicate customer/sample in metadata: ${dupSamples}")
     }
-    def dupFwd = dupes { "${it.fwd_front}|${it.fwd_rear}" }
+    def dupFwd = dupes(rows) { r -> "${r.fwd_front}|${r.fwd_rear}" }
     if (dupFwd) {
         throw new IllegalArgumentException("Forward barcode combination used by more than one sample: ${dupFwd}")
     }
-    def dupRev = dupes { "${it.rev_front}|${it.rev_rear}" }
+    def dupRev = dupes(rows) { r -> "${r.rev_front}|${r.rev_rear}" }
     if (dupRev) {
         throw new IllegalArgumentException("Reverse barcode combination used by more than one sample: ${dupRev}")
     }

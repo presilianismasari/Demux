@@ -8,11 +8,11 @@
  *   demux/unclassified.fastq.gz
  */
 process DORADO_DEMUX {
-    tag "${meta.id}"
+    tag { "${meta.id}" }
     label 'dorado'
 
-    publishDir "${params.outdir}/logs/${meta.id}", mode: params.publish_dir_mode, pattern: '*.log'
-    publishDir "${params.outdir}/intermediate/${meta.id}", mode: params.publish_dir_mode, pattern: 'demux',
+    publishDir path: { "${params.outdir}/logs/${meta.id}" }, mode: params.publish_dir_mode, pattern: '*.log'
+    publishDir path: { "${params.outdir}/intermediate/${meta.id}" }, mode: params.publish_dir_mode, pattern: 'demux',
         enabled: params.save_intermediate
 
     input:

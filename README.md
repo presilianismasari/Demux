@@ -20,6 +20,15 @@ into `barcodeNN.fastq.gz` (same-named folders from several run ids are merged), 
 
 ## Usage
 
+Before running the pipeline, create and activate the Conda environment from [`demuxPBOR.yml`](<demuxPBOR.yml>):
+
+```bash
+conda env create -f demuxPBOR.yml
+conda activate demuxPBOR
+```
+
+Activation of this environment is required before running Nextflow; running it outside `demuxPBOR` may not provide all required tools.
+
 ```bash
 chmod +x bin/*.sh   # once; Nextflow needs bin/ scripts to be executable
 

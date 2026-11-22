@@ -28,6 +28,7 @@ def dorado(String name) {
 }
 
 workflow {
+    main:
     if (!params.input)    { error "Missing --input (fastq/fastq.gz glob or directory)" }
     if (!params.metadata) { error "Missing --metadata (tab-separated sample sheet)" }
 
@@ -150,9 +151,8 @@ workflow {
         ch_sample_stats,
         ch_sample_meta
     )
-}
 
-workflow.onComplete {
+    onComplete:
     log.info(workflow.success
         ? "Done. Results in: ${params.outdir}"
         : "Pipeline failed: ${workflow.errorMessage ?: 'see .nextflow.log'}")

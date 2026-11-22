@@ -3,9 +3,9 @@
  * into <sample>.fastq.gz (concatenated gzip members are valid gzip).
  */
 process COLLECT_SAMPLE {
-    tag "${meta.customer}/${meta.sample}"
+    tag { "${meta.customer}/${meta.sample}" }
 
-    publishDir "${params.outdir}/demux/${meta.customer}/${meta.sample}", mode: params.publish_dir_mode, pattern: '*.fastq.gz'
+    publishDir path: { "${params.outdir}/demux/${meta.customer}/${meta.sample}" }, mode: params.publish_dir_mode, pattern: '*.fastq.gz'
 
     input:
     tuple val(meta), path(fwd, stageAs: 'fwd/*'), path(rev, stageAs: 'rev/*')
